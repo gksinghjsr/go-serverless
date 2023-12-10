@@ -5,7 +5,6 @@ package:
 
 provider:
   name: aws
-  lambdaHashingVersion: 20201221
   region: eu-west-1
 
   iamRoleStatements:
