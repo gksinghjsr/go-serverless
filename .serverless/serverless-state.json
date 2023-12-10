@@ -116,6 +116,12 @@
               "LogGroupName": "/aws/lambda/notes-dev-findAll"
             }
           },
+          "PostLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/notes-dev-post"
+            }
+          },
           "IamRoleLambdaExecution": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -204,7 +210,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/notes/dev/1702208514980-2023-12-10T11:41:54.980Z/findAll.zip"
+                "S3Key": "serverless/notes/dev/1702211888771-2023-12-10T12:38:08.771Z/findAll.zip"
               },
               "Handler": "findAll",
               "Runtime": "go1.x",
@@ -227,14 +233,54 @@
               "FindAllLogGroup"
             ]
           },
-          "FindAllLambdaVersionLig81r9EqkuRb2WUdYKIHRWUSYZeUrNB5y3IRl1k": {
+          "PostLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/notes/dev/1702211888771-2023-12-10T12:38:08.771Z/post.zip"
+              },
+              "Handler": "post",
+              "Runtime": "go1.x",
+              "FunctionName": "notes-dev-post",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "TABLE_NAME": "notes-go"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "PostLogGroup"
+            ]
+          },
+          "PostLambdaVersioniIqMr43vmoJcwnrseNz4DUh0lYMGHd1Z3wqfvSQfZOw": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "PostLambdaFunction"
+              },
+              "CodeSha256": "0fbs2cE3sVW4gqc/3xorotkq0nec0jEg4iiR+FncueI="
+            }
+          },
+          "FindAllLambdaVersionc6qp53m6FhTeR6s9R5XkPUJFTqAAa1br9kJYTVixGUM": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "FindAllLambdaFunction"
               },
-              "CodeSha256": "RTms72XbkOb2yA7mkWPbGsG0xxRnZ39XgxYE+EOA8X8="
+              "CodeSha256": "zOIwFGMVxqIk3f7faJDpgkp2V0ujh23PZ8wkTwccQXE="
             }
           },
           "ApiGatewayRestApi": {
@@ -310,7 +356,53 @@
               "FindAllLambdaPermissionApiGateway"
             ]
           },
-          "ApiGatewayDeployment1702208514063": {
+          "ApiGatewayMethodNotesPost": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "POST",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotes"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "PostLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "PostLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayDeployment1702211887671": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": {
@@ -319,7 +411,8 @@
               "StageName": "dev"
             },
             "DependsOn": [
-              "ApiGatewayMethodNotesGet"
+              "ApiGatewayMethodNotesGet",
+              "ApiGatewayMethodNotesPost"
             ]
           },
           "FindAllLambdaPermissionApiGateway": {
@@ -328,6 +421,43 @@
               "FunctionName": {
                 "Fn::GetAtt": [
                   "FindAllLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "PostLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "PostLambdaFunction",
                   "Arn"
                 ]
               },
@@ -391,10 +521,19 @@
               "Name": "sls-notes-dev-ServerlessDeploymentBucketName"
             }
           },
+          "PostLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "PostLambdaVersioniIqMr43vmoJcwnrseNz4DUh0lYMGHd1Z3wqfvSQfZOw"
+            },
+            "Export": {
+              "Name": "sls-notes-dev-PostLambdaFunctionQualifiedArn"
+            }
+          },
           "FindAllLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "FindAllLambdaVersionLig81r9EqkuRb2WUdYKIHRWUSYZeUrNB5y3IRl1k"
+              "Ref": "FindAllLambdaVersionc6qp53m6FhTeR6s9R5XkPUJFTqAAa1br9kJYTVixGUM"
             },
             "Export": {
               "Name": "sls-notes-dev-FindAllLambdaFunctionQualifiedArn"
@@ -536,7 +675,28 @@
         "memory": 1024,
         "timeout": 6,
         "vpc": {},
-        "versionLogicalId": "FindAllLambdaVersionLig81r9EqkuRb2WUdYKIHRWUSYZeUrNB5y3IRl1k"
+        "versionLogicalId": "FindAllLambdaVersionc6qp53m6FhTeR6s9R5XkPUJFTqAAa1br9kJYTVixGUM"
+      },
+      "post": {
+        "runtime": "go1.x",
+        "handler": "post",
+        "events": [
+          {
+            "http": {
+              "path": "notes",
+              "method": "post",
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "package": {
+          "artifact": "bin/post.zip"
+        },
+        "name": "notes-dev-post",
+        "memory": 1024,
+        "timeout": 6,
+        "vpc": {},
+        "versionLogicalId": "PostLambdaVersioniIqMr43vmoJcwnrseNz4DUh0lYMGHd1Z3wqfvSQfZOw"
       }
     },
     "resources": {
@@ -573,7 +733,7 @@
       "package": {
         "individually": true,
         "artifactsS3KeyDirname": "serverless/notes/dev/code-artifacts",
-        "artifactDirectoryName": "serverless/notes/dev/1702208514980-2023-12-10T11:41:54.980Z"
+        "artifactDirectoryName": "serverless/notes/dev/1702211888771-2023-12-10T12:38:08.771Z"
       },
       "provider": {
         "$ref": "$[\"service\"][\"provider\"]"
@@ -593,7 +753,7 @@
   },
   "package": {
     "individually": true,
-    "artifactDirectoryName": "serverless/notes/dev/1702208514980-2023-12-10T11:41:54.980Z",
+    "artifactDirectoryName": "serverless/notes/dev/1702211888771-2023-12-10T12:38:08.771Z",
     "artifact": ""
   }
 }

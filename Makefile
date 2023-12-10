@@ -1,6 +1,7 @@
 define build_binaries
 	@echo "- Building binaries..."
 	@GOOS=linux GOARCH=amd64 go build -o bin/findAll cmd/findAll/main.go
+	@GOOS=linux GOARCH=amd64 go build -o bin/post cmd/post/main.go
 	@echo "Finished building binaries"
 endef
 

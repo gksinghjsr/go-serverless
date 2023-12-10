@@ -32,6 +32,15 @@ functions:
           method: GET
     package:
       artifact: bin/findAll.zip
+  post:
+    runtime: go1.x
+    handler: post
+    events:
+      - http:
+          path: notes
+          method: POST
+    package:
+      artifact: bin/post.zip
 
 resources:
   Resources:
